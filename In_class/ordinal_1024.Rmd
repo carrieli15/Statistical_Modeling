@@ -1,0 +1,49 @@
+
+```{r}
+library(foreign) #package to access data type
+library(MASS) #package for model
+dat <- read.dta("https://stats.idre.ucla.edu/stat/data/ologit.dta")
+```
+
+```{r}
+glimpse(dat)
+```
+
+```{r}
+# ORDINAL REGRESSION MODEL
+ord_mod <- polr(apply ~ pared + public + gpa, data=dat, Hess=TRUE)
+summary(ord_mod)
+```
+
+```{r}
+# create a table to show the estimates, standard errors, t values, and p values
+pvals <- pnorm(-abs(summary(ord_mod)$coef[,"t value"]))*2
+ctable <- cbind(summary(ord_mod)$coef,pvals)
+
+ctable
+```
+
+```{r}
+# the estimates and confidence intervals to interpret on the odds ratio scale
+exp_coefs <- exp(cbind(OR=coef(ord_mod),confint(ord_mod)))
+```
+
+```{r}
+exp_coefs
+```
+For students whose parents did attend college, the odds of being more likely (i.e., very or somewhat likely versus unlikely) to apply to graduate school is 2.85 times that of students whose parents did not go to college, holding constant all other variables.
+
+
+```{r}
+head(ord_mod$fitted.values)
+```
+
+```{r}
+head(predict(ord_mod))
+```
+
+```{r}
+library(caret)
+confusionMatrix(factor(ifelse(fitted(ord_mod)>0.2, "yes", "no")), factor(dat$apply), positive="yes", mode="everything")
+```
+

@@ -1,0 +1,512 @@
+---
+title: "\\textbf{Logistic Regression Analysis of Resume}"
+author: "Jiechen"
+format: 
+  pdf:
+   standalone: false
+   echo: false
+   geometry:
+     - top=11mm
+     - left=18mm
+     - right=18mm
+header-includes:
+   - "\\usepackage{booktabs}"
+   - "\\usepackage{titling}"
+editor: visual
+execute: 
+  echo: false
+  message: false
+  warning: false
+---
+
+```{r}
+knitr::opts_chunk$set(echo = FALSE, message = FALSE, warning = FALSE)
+# load the dataset
+library(openintro)
+data("resume")
+```
+
+# **Data Overview**
+
+Sourced from [OpenIntro](https://www.openintro.org/data/index.php?data=resume), my dataset contains 4,870 entries with 30 variables, centered on the query: "How do race and gender affect callback rates from job applications?" The analysis evaluates the link between demographics and the "received_callback" outcome.
+
+# **Data Cleaning**
+
+1.  **Check for Data Structure**
+
+```{r}
+knitr::opts_chunk$set(echo = FALSE, message = FALSE, warning = FALSE)
+#str(resume)
+```
+
+The target variable, "received_callback", is binary: 0 for "no callback" and 1 for "received callback". Key predictors are "race" ("white" or "black") and "gender" ("f" for female, "m" for male), which will be binary encoded. While the analysis incorporates various predictors, over-reliance on categorical ones may introduce bias. The continuous "years_experience" is categorized as:
+
+| Entry Level | Mid Level   | Senior Level |
+|-------------|-------------|--------------|
+| 1 - 5 years | 6 - 9 years | 10 years +   |
+
+Lastly, all relevant variables will be converted to factors.
+
+```{r}
+knitr::opts_chunk$set(echo = FALSE, message = FALSE, warning = FALSE)
+# convert received_callback
+resume <- as.data.frame(resume)
+resume$received_callback[resume$received_callback == 0] <- "no"
+resume$received_callback[resume$received_callback == 1] <- "yes"
+```
+
+```{r}
+knitr::opts_chunk$set(echo = FALSE, message = FALSE, warning = FALSE)
+# convert the column into a factor
+resume$received_callback <- as.factor(resume$received_callback)
+```
+
+```{r}
+knitr::opts_chunk$set(echo = FALSE, message = FALSE, warning = FALSE)
+
+resume$race[resume$race == 0] <- "black"
+resume$race[resume$race == 1] <- "white"
+```
+
+```{r}
+knitr::opts_chunk$set(echo = FALSE, message = FALSE, warning = FALSE)
+
+resume$gender[resume$gender == 0] <- "female"
+resume$gender[resume$gender == 1] <- "male"
+```
+
+```{r}
+knitr::opts_chunk$set(echo = FALSE, message = FALSE, warning = FALSE)
+
+#resume$resume_quality[resume$resume_quality == 0] <- "low"
+#resume$resume_quality[resume$resume_quality == 1] <- "high"
+```
+
+```{r}
+knitr::opts_chunk$set(echo = FALSE, message = FALSE, warning = FALSE)
+
+resume$job_city[resume$job_city == 0] <- "Chicago"
+resume$job_city[resume$job_city == 1] <- "Boston"
+```
+
+```{r}
+#(resume$employment_holes)
+```
+
+```{r}
+resume$gender <- factor(resume$gender, levels = c("f", "m"), labels = c("Female", "Male"))
+resume$race <- factor(resume$race, levels = c("black", "white"), labels = c("Black", "White"))
+#resume$job_city <- factor(resume$race, levels = c("Chicago", "Boston"), labels = c("Chicago", "Boston"))
+
+resume$volunteer = factor(resume$volunteer, levels = c("0", "1"), labels = c("No", "Yes"))
+resume$employment_holes = factor(resume$employment_holes, levels = c("0", "1"), labels = c("No", "Yes"))
+
+resume$worked_during_school = factor(resume$worked_during_school, levels = c("0", "1"),labels = c("No", "Yes"))
+```
+
+```{r}
+resume$job_city <- as.factor(resume$job_city)
+```
+
+```{r}
+knitr::opts_chunk$set(echo = FALSE, message = FALSE, warning = FALSE)
+# convert as factors
+#resume$race <- as.factor(resume$race)
+#resume$gender <- as.factor(resume$gender)
+#resume$resume_quality <- as.factor(resume$resume_quality)
+#resume$job_industry <- as.factor(resume$job_industry)
+#resume$job_type <- as.factor(resume$job_type)
+#resume$job_req_education <- as.factor(resume$job_req_education)
+#resume$has_email_address <- as.factor(resume$has_email_address)
+#resume$volunteer <- as.factor(resume$volunteer)
+#resume$employment_holes <- as.factor(resume$employment_holes)
+#resume$worked_during_school <- as.factor(resume$worked_during_school)
+```
+
+```{r}
+#summary(resume$years_experience)
+```
+
+```{r}
+knitr::opts_chunk$set(echo = FALSE, message = FALSE, warning = FALSE)
+#is.numeric(resume$years_experience)
+```
+
+```{r}
+knitr::opts_chunk$set(echo = FALSE, message = FALSE, warning = FALSE)
+#resume$years_experience <- as.numeric(as.character(resume$years_experience))
+```
+
+```{r}
+knitr::opts_chunk$set(echo = FALSE, message = FALSE, warning = FALSE)
+#sum(is.na(resume$years_experience))
+```
+
+```{r}
+knitr::opts_chunk$set(echo = FALSE, message = FALSE, warning = FALSE)
+#unique(resume$years_experience)
+```
+
+```{r}
+knitr::opts_chunk$set(echo = FALSE, message = FALSE, warning = FALSE)
+resume$experience_category <- cut(resume$years_experience, 
+                                  breaks = c(0, 5, 10, Inf), 
+                                  labels = c("Entry_Level", "Mid_Level", "Senior_Level"), 
+                                  include.lowest = TRUE)
+
+```
+
+```{r}
+knitr::opts_chunk$set(echo = FALSE, message = FALSE, warning = FALSE)
+#str(resume$experience_category)
+```
+
+```{r}
+knitr::opts_chunk$set(echo = FALSE, message = FALSE, warning = FALSE)
+#table(resume$experience_category)
+```
+
+```{r}
+resume$experience_category <- factor(resume$experience_category, 
+                                 levels = c("Entry_Level", "Mid_Level", "Senior_Level"),
+                                 labels = c("Entry Level", "Mid Level", "Senior Level"))
+```
+
+```{r}
+knitr::opts_chunk$set(echo = FALSE, message = FALSE, warning = FALSE)
+#str(resume)
+```
+
+2.  **Check for Missing Values**
+
+```{r}
+knitr::opts_chunk$set(echo = FALSE, message = FALSE, warning = FALSE)
+library(dplyr)
+
+# Count missing values for each variable
+#missing_counts <- resume %>%
+  #summarise_all(~sum(is.na(.)))
+
+#print(missing_counts)
+```
+
+The missing value analysis reveals 1,768 absent entries for "job_fed_contractor". While the dataset is mostly complete, addressing these gaps is vital for the accuracy of further analyses.
+
+3.  **Check for Distributions**
+
+```{r}
+knitr::opts_chunk$set(echo = FALSE, message = FALSE, warning = FALSE)
+#table(resume$received_callback)
+```
+
+The data shows a marked imbalance in the outcome variable: 392 received callbacks compared to 4,478 that didn't. Such skewness can bias machine learning models, such as logistic regression, causing them to lean towards the majority class.
+
+\centering
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE, fig.width=4.5, fig.height=2.5}
+knitr::opts_chunk$set(echo = FALSE, message = FALSE, warning = FALSE)
+#library(DataExplorer)
+library(ggplot2)
+
+p <- ggplot(resume, aes(x=received_callback,fill=received_callback)) +
+  geom_bar() +
+  ggtitle("Received a Callback from a Job Application")+
+  scale_fill_manual(values=c("orange", "green"), 
+                    labels=c("No Callback", "Received Callback")) +  
+  scale_x_discrete(labels=c("No Callback", "Received Callback")) + 
+  labs(x="Callback Status", y="Number of Resume") +
+  guides(fill=guide_legend(title=NULL))
+  
+invisible(theme_void())
+p
+```
+
+\raggedright
+
+Based on the data cleaning and preprocessing insights, several assumptions and potential challenges emerge that warrant careful consideration:
+
+-   The severe imbalance in the "received_callback" variable may lead models to bias predictions towards the majority class (no callback).
+-   Many categorical predictors can result in potential multicollinearity and overfitting risks.
+-   The "years_experience" variable may confound the relationship between predictors and outcomes if not handled properly.
+
+# **Modeling**
+
+## **Justification for Logistic Regression**
+
+To study the binary "received_callback" outcome, logistic regression is ideal. Suited for dichotomous outcomes like callbacks (1) or none (0), it offers interpretable odds ratios, clarifying the impact of predictors like race or gender on callback chances.
+
+## **Variable Selection (a priori)**
+
+Using a priori variable selection, based on the resume dataset with "received_callback" as the outcome and race and gender as key predictors, I have selected variables potentially influencing callbacks and correlating with race or gender as follows:
+
+-   **Outcome Variable**: \
+    *received_callback*: Indicator for if there was a callback from the job posting for the person listed on this resume.
+
+-   **Predictor Variables**: \
+    *race*: Inferred race associated with the first name on the resume.\
+    *gender*: Inferred gender associated with the first name on the resume.\
+    *years_experience*: Years of experience listed on the resume.\
+    *job_city*: City where the job was located.\
+    *volunteer*: Indicator for if volunteering was listed on the resume.\
+    *employment_holes*: Indicator for if there were holes in the person's employment history.\
+    *worked_during_school*: Indicator for if the resume listed working while in school.
+
+```{r}
+knitr::opts_chunk$set(echo = FALSE, message = FALSE, warning = FALSE)
+#xtabs(~ received_callback + gender, data=resume)
+```
+
+```{r}
+knitr::opts_chunk$set(echo = FALSE, message = FALSE, warning = FALSE)
+# make a small table
+#library(knitr)
+
+# Assuming you've already created your contingency table in R
+#contingency_table <- xtabs(~ received_callback + gender, data=resume)
+
+# Print the table using kable
+#kable(contingency_table, caption = "Gender Influence")
+```
+
+```{r}
+knitr::opts_chunk$set(echo = FALSE, message = FALSE, warning = FALSE)
+#xtabs(~ received_callback + race, data=resume)
+```
+
+```{r}
+knitr::opts_chunk$set(echo = FALSE, message = FALSE, warning = FALSE)
+# make a small table
+library(knitr)
+
+# Assuming you've already created your contingency table in R
+#contingency_table <- xtabs(~ received_callback + race, data=resume)
+
+# Print the table using kable
+#kable(contingency_table, caption = "Race Influence")
+```
+
+## **Logistic Regression Modeling**
+
+### **Model 1**:
+
+I assessed how years of experience impacted callback rates. Although the model prediction revealed an outlier, its removal didn't significantly alter the results, so we kept the original model.
+
+```{r}
+knitr::opts_chunk$set(echo = FALSE, message = FALSE, warning = FALSE)
+model_1 <- glm(received_callback ~ years_experience, data = resume, family = "binomial")
+#summary(model_1)
+```
+
+\centering
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE, fig.width=3.5, fig.height=2.3}
+#resume$model_1 <- predict(model_1, type="response")
+#par(mar=c(4, 4, 2, 2))
+#plot(resume$years_experience, predict(model_1),
+     #xlab="Years of Experience",  
+     #ylab="Predicted Value",
+     #col="blue",
+     #main="Model 1",
+     #cex.main=1.0)
+```
+
+\raggedright
+
+```{r}
+resume_1 <- subset(resume, (years_experience !=44))
+```
+
+```{r}
+model_1 <- glm(received_callback ~ years_experience, data = resume_1, family = "binomial")
+#summary(model_1)
+```
+
+### **Model 2**:
+
+I constructed a model using seven predictor variables. "years_experience" has been categorized into three levels and renamed "experience_category", while the other six variables are binary.
+
+**Summary output table** 
+
+1). **Race** stands out prominently: White applicants are about 56% more likely to receive a callback than black applicants, a finding that's statistically significant (p \< 0.001) and supported by the 95% CI (1.26, 1.93).
+
+2). **Location** is crucial: Boston-based applications have significantly higher odds of a callback than those in Chicago, with the difference being statistically significant (p \< 0.001) and the 95% CI ranging from 0.53 to 0.82.
+
+3). **Experience** carries weight: Senior level applicants have a distinct advantage, with a 51% greater likelihood of callbacks compared to entry level, validated by a p-value of 0.004 and a 95% CI (1.14, 2.00).
+
+Surprisingly, candidates with employment gaps have a statistically significant (p \< 0.001) 81% increased chance of callbacks, a finding that's both unexpected and supported by the 95% CI (1.42, 2.32).
+
+```{r}
+# check levels
+#lapply(resume[, c("race", "gender", "job_city", "experience_category", "volunteer", "employment_holes", "worked_during_school")], function(x) length(unique(x)))
+
+```
+
+```{r}
+knitr::opts_chunk$set(echo = FALSE, message = FALSE, warning = FALSE)
+# install.packages("gtsummary")
+library(gtsummary)
+library(gt)
+library(dplyr)
+
+
+model_2 <- glm(received_callback ~ race + gender + job_city + experience_category + volunteer + employment_holes + worked_during_school, data = resume, family = "binomial")
+
+#summary(model_2)
+
+model_2 %>%
+  tbl_regression(
+    exponentiate=TRUE,
+    label = list(
+      race = "Race",
+      gender = "Gender",
+      job_city = "Job Location",
+      experience_category = "Working Experience",
+      volunteer = "Volunteer History",
+      employment_holes = "Employment Gaps",
+      worked_during_school = "Worked During School"
+    )             
+  ) %>%
+  bold_labels() %>%
+  bold_p(t= .1) %>%
+  as_gt() %>%
+  tab_options(table.font.size = px(10))
+```
+
+**Predict Probability** Upon evaluating the model's predictions, I observed that the chances of receiving a callback are evenly distributed.
+
+\centering
+
+```{r,echo=FALSE, message=FALSE, warning=FALSE, fig.width=3.5, fig.height=2.3}
+#resume$model_2 <- predict(model_2, type="response")
+#par(mar=c(4, 4, 2, 2))
+#plot(predict(model_2),
+     #xlab="Observation Number",  
+     #ylab="Predicted Probability",
+     #col="blue",
+     #main="Model 2",
+     #cex.main=1.0)
+```
+
+\raggedright
+
+**Cook's Distance** Through Cook's distance, I pinpointed three potential outliers. After excluding them in "model_3", p-values revealed no notable enhancement over Model 2. Given their non-influence, Model 2 will be retained.
+
+\centering
+
+```{r,echo=FALSE, message=FALSE, warning=FALSE, fig.width=3.5, fig.height=2.3}
+#par(mar=c(4, 4, 2, 2))
+#plot(model_2, which=4,
+     #col="blue")
+```
+
+\raggedright
+
+```{r}
+resume_2 <- resume %>% filter(!(row.names(resume) %in% c(270,4242,4286)))
+```
+
+```{r}
+knitr::opts_chunk$set(echo = FALSE, message = FALSE, warning = FALSE)
+model_3 <- glm(received_callback ~ race + gender + job_city + experience_category + volunteer + employment_holes + worked_during_school, data = resume_2, family = "binomial")
+
+# View the summary of the model
+#summary(model_3)
+```
+
+**VIF** The "experience_category" variable, having three levels, may introduce multicollinearity, especially with sparse observations in some levels. Hence, I assessed multicollinearity using VIF on Model 2.\
+
+1). **race**: An adjusted GVIF of 1.000479 indicates negligible multicollinearity, so race's effect on callbacks is clear from other predictors' influence.
+
+2). **gender**: An adjusted GVIF of 1.069440 suggests minor multicollinearity, warranting slight caution when interpreting gender's influence.
+
+Regarding the other variables: their adjusted GVIF values are slightly above 1, pointing to mild multicollinearity.
+
+```{r}
+knitr::opts_chunk$set(echo = FALSE, message = FALSE, warning = FALSE)
+#library(car)
+#vif(model_2)
+```
+
+**ROC Curve** I will generate an ROC curve for Model 2 and identify the optimal threshold for the confusion matrix. The ROC suggests Model 2 can distinguish between classes, with its effectiveness gauged by the AUC and the balance between sensitivity and specificity.
+
+\centering
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE, fig.width=3.5, fig.height=3.0}
+knitr::opts_chunk$set(echo = FALSE, message = FALSE, warning = FALSE)
+library(pROC)
+roc_obj <- roc(resume$received_callback,fitted(model_2),print.thres="best",print.auc=T,plot=F, legacy.axes=T)
+plot(roc_obj, print.thres="best", print.auc=TRUE, legacy.axes=T)
+```
+
+\raggedright
+
+**Confusion Matrix** With a threshold set at 0.092 to address dataset imbalance and emphasize recall, the model achieves about 72% accuracy. Though specificity is decent, its low sensitivity and precision suggest a conservative stance in predicting "yes" for callbacks, resulting in potential false negatives.
+
+```{r}
+knitr::opts_chunk$set(echo = FALSE, message = FALSE, warning = FALSE)
+#library(caret)
+
+#confusionMatrix(factor(ifelse(fitted(model_2)>0.092, "yes", "no")), factor(resume$received_callback), positive="yes", mode="everything")
+```
+
+# **Results**
+
+The bar chart visualizes the predicted callback rates for job applicants, adjusted for various factors including job city, experience category, volunteering history, employment gaps, and whether the applicant worked during school. The rates are segregated based on race and gender, offering insights into potential disparities.
+
+**Race & Gender Dynamics**: White males have the highest callback rates, followed by white females, black males, and black females.
+
+Despite adjustments, racial disparities in callback rates remain pronounced, with gender adding another layer of complexity.
+
+\centering
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE, fig.width=4.5, fig.height=2.3}
+get_mode <- function(v) {
+  uniqv <- unique(v)
+  uniqv[which.max(tabulate(match(v, uniqv)))]
+}
+
+new_data <- expand.grid(
+  race = unique(resume$race),
+  gender = unique(resume$gender),
+  job_city = get_mode(resume$job_city),
+  experience_category = get_mode(resume$experience_category),
+  volunteer = get_mode(resume$volunteer),
+  employment_holes = get_mode(resume$employment_holes),
+  worked_during_school = get_mode(resume$worked_during_school)
+)
+
+
+new_data$predicted_callback_rate <- predict(model_2, new_data, type="response")
+
+
+ggplot(new_data, aes(x = race, y = predicted_callback_rate, fill = gender)) +
+  geom_bar(stat = "identity", position = "dodge") +
+  labs(y = "Adjusted Callback Rate", 
+       x = "Race", 
+       title = "Adjusted Callback Rates by Race and Gender") +
+  scale_fill_manual(values = c("blue", "red"), 
+                    name = "Gender",
+                    labels = c("Male","Female")) +
+  theme_minimal()
+
+```
+
+\raggedright
+
+# **Future Work**
+
+By emphasizing both the strengths of the current work and the need to address its limitations, it sets a constructive direction for future research efforts.
+
+**Strengths**:
+
+-   Holistic inclusion of diverse variables provides a comprehensive view of callback factors.
+
+-   Rigorous statistical techniques validate the findings, with adjustments made for potential confounders.
+
+**Limitations**:
+
+-   Data imbalance poses a potential bias risk.
+
+-   Possible multicollinearity and unobserved confounders might affect the results.
+
+-   The findings' generalizability beyond the specific dataset is uncertain.

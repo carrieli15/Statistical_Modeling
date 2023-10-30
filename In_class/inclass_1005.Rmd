@@ -1,0 +1,47 @@
+```{r}
+heart <- read.csv("https://raw.githubusercontent.com/anlane611/datasets/main/heart.csv")
+
+glimpse(heart)
+```
+
+```{r}
+# have heart disease 
+sum(heart$target==1)
+```
+
+```{r}
+# no heart disease 
+sum(heart$target==0)
+```
+
+```{r}
+# have heart disease ratio
+N = sum(heart$target==1)/length(heart$target)
+N
+```
+
+```{r}
+# matrix for people with heart disease and without heart disease
+outcome_matrix <- matrix(0, nrow = 2, ncol = 2)
+outcome_matrix[1,1] = sum(heart$target == 1)
+outcome_matrix[2,1] = sum(heart$target == 0)
+outcome_matrix[1,2] = sum(heart$target == 1)/length(heart$target)
+outcome_matrix[2,2] = sum(heart$target == 0)/length(heart$target)
+
+outcome_matrix
+```
+
+```{r}
+summary(heart)
+```
+
+```{r}
+# logistc model 
+mod <- glm(target ~ age+sex+cp+chol,data = heart, family = binomial)
+summary(mod)
+plot(mod)
+```
+
+```{r}
+levels(heart$sex)
+```

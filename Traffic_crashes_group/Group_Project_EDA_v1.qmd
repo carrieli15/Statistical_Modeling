@@ -1,0 +1,314 @@
+---
+title: "\\textbf{Traffic Crashes EDA}"
+date: "10/20/2023"
+format:
+  pdf:
+    include-in-header:
+      text: |
+        \addtokomafont{disposition}{\rmfamily}
+editor: visual
+geometry:
+     - top=11mm
+     - left=18mm
+     - right=18mm
+header-includes:
+   - "\\usepackage{booktabs}"
+   - "\\usepackage{titling}"
+author: "Group 12: Divya Sharma (ds655), Dhaval Potdar(dsp50), Jiayi Zhou (jz456), Jiechen Li (jl1254)"
+---
+
+```{r,include=FALSE}
+library(tidyverse)
+library(ggplot2)
+library(ggrepel)
+library(hrbrthemes)
+library(gridExtra)
+path = "crashes_cleaned.rds"
+#path = "crashes.csv"
+df_cleaned <- readRDS(path) %>% 
+  filter(STREET_DIRECTION != "")
+```
+
+## 1. Data Overview
+
+**Dataset**: The data-set has data on Traffic Crashes in Chicago from 2015 onwards, and contains details of each crash, including:
+
+• `Location`: The latitude and longitude of the crash.
+
+• `Date and time`: The date and time of the crash.
+
+• `Injuries`: The number and type of injuries that occurred.
+
+• `Damage`: The estimated damage cost of the crash.
+
+• `Crash type`: The details about the type of crash - hit and run, no right of way, intersection related, causes etc.
+
+• `Conditions`: The details about the weather, lighting, traffic, traffic control devices, and roads etc.
+
+This data can be used to identify the probabilities of crashes happening, and their eventual consequences, given the surrounding situations such as time of day, weather, road conditions, traffic conditions, lighting, and roadway surface etc.
+
+**Source**: The dataset was obtained from an online repository, though the specific origin or institution responsible for its collection and maintenance was not specified. The dataset is selected from [City of Chicago's official page](https://data.cityofchicago.org/Transportation/Traffic-Crashes-Crashes/85ca-t3if).
+
+**Sample Size**: The dataset contains a total of 769,100 observations.
+
+**Number of Variables**: There are 49 variables in the dataset.
+
+**Collection Method**: The data is collected from traffic crash reports in Chicago. These reports can be sourced from various entities such as traffic police, surveillance systems, or reporting by involved parties. The exact method of data collection, however, has not been provided.
+
+**Unit of Analysis**: Each row in the dataset represents a unique traffic crash incident in Chicago. The details of the crash, including specifics like location, time, type of crash, conditions at the time of the crash, and the aftermath (like injuries and damages), are captured across the 49 variables.
+
+**Research Questions**:
+
+1.  Given that there is a crash, based on the location, time, crash type, and surrounding road and traffic conditions, how much damage is to be expected (\<=1.5K\$ or \>1.5K\$)?
+
+-   **Outcome Variable** - Damage (\<=1.5K\$ or \>1.5K\$) - categorical variable
+-   **Input/Explanatory Variables** - Location, date, time of the day, crash type, and surrounding conditions
+
+2.  How long it takes in minutes for police to be notified upon accident, given the nature of the accident?
+
+-   **Outcome Variable** - Police Notification Time (in minutes) - continuous variable
+-   **Input/Explanatory Variables** - Location, date, time of the day, crash type, and surrounding conditions.
+
+```{r, include=FALSE}
+# time_diff <- as.numeric(difftime(as.POSIXct(df_raw$DATE_POLICE_NOTIFIED, format='%m/%d/%Y %H:%M:%S %p', tz=Sys.timezone()), as.POSIXct(df_raw$CRASH_DATE, format='%m/%d/%Y %H:%M:%S %p', tz=Sys.timezone()), units = "min"))
+# df_cleaned <- df_raw %>% 
+#   mutate(damage_class = factor(case_when(DAMAGE %in% c("$500 OR LESS", 
+#                                                        "$501 - $1,500") ~ "Minor",
+#                                          DAMAGE %in% c("OVER $1,500") ~ "Major", 
+#                                          TRUE ~ NA_character_)),
+#          police_notified_time = time_diff) %>% 
+#   filter(police_notified_time > 0, 
+#          police_notified_time <= 24 * 60, 
+#          !is.na(police_notified_time)) %>% # less than a day
+#   select(-CRASH_RECORD_ID, -RD_NO)
+```
+
+## 2. EDA for Outcome Variables
+
+### 2.1 Police Notification Time
+
+> -   The distribution is heavily right skewed with a majority of accidents being reported to the police in less than 25 minutes. Thus, the outcome is better visualized on a log scale.
+
+> -   The median notification time is 25 minutes, the mean is 110 minutes (1 hour and 50 minutes) and the maximum is 1440 minutes (1 day).
+
+> -   Given the heavy skewing of the outcome variable, we will need to do appropriate transformations on the outcome variables in the modeling step.
+
+##### Fig 1: Distribution of Police Notified Time (Continuous Outcome)
+
+\centering
+
+```{r, echo=FALSE,fig.width = 4, fig.height = 2.5}
+df_cleaned %>%
+  ggplot(aes(x=police_notified_time)) +
+  geom_histogram(binwidth=0.25, fill="#69b3a2", color="#e9ecef", alpha=0.9) +
+  ggtitle("Police Notification Time") +
+  xlab("Time in Minutes") +
+  ylab("Count") +
+  # annotation_logticks() +
+  scale_x_log10(
+   breaks = scales::trans_breaks("log10", function(x) 10^x),
+   labels = scales::trans_format("log10", scales::math_format(10^.x))) +
+  scale_y_continuous(name = "Number of Crashes", labels = scales::comma) +
+  theme(plot.title = element_text(size=15)) +
+  geom_vline(xintercept = median(df_cleaned$police_notified_time)) + 
+  annotate("text", 
+           x=median(df_cleaned$police_notified_time), 
+           y=0, 
+           label=paste0(median(df_cleaned$police_notified_time), " Minutes."), 
+           angle=0)
+```
+
+\raggedright
+
+### 2.2 Expected Damage
+
+-   The categorical variable has two outcomes - Major Damage (\>\$1,500) and Minor Damage (\<\$1,500)
+
+-   62% of the damages come under the "Major" category
+
+##### Fig 2: Distribution of Damage Type (Categorical Outcome)
+
+\centering
+
+```{r, echo=FALSE,fig.width = 3, fig.height = 2}
+df_cleaned %>% 
+  group_by(damage_class) %>% 
+  summarise(Count = n()) %>% 
+  ungroup() %>%
+  mutate(`Percent` = round(Count/sum(Count), 2),
+         labels = scales::percent(Percent)) %>% 
+  rename(`Damage Class` = damage_class) %>% 
+  ggplot(aes(x = "", y = Percent, fill = `Damage Class`)) +
+  geom_col() +
+  geom_text(aes(label = labels),
+            position = position_stack(vjust = 0.5)) +
+  coord_polar(theta = "y") + 
+  ggtitle("Distribution of Damage Type") +
+  theme_void() +
+  geom_text(aes(x=0, y = 0, label=paste0("Total: ", sum(Count))))
+```
+
+\raggedright
+
+## 3. Primary Variables of Interest
+
+### 3.1 For Time Taken to Notify Police (Continuous Outcome)
+
+While the average time taken to notify police in case of a crash is 25 mins, we can look at this distribution across different cuts such as day of the week or weather -
+
+-   When we look at the distribution of time taken to notify police during different times of the day, the median time taken to notify is highest between 12PM to 4PM and lowest between 12AM to 4AM
+-   For damages above \$1,500, time taken to notify police (103 minutes) is lesser than time taken for damages between \$501-\$1,500 (133 minutes)
+-   We observe that mondays have a much higher average time to notify police as compared to Sundays
+-   For Crash Type "no Injury", the average time taken is 134 minutes, which is almost 3x the time taken for crash type "Injury", which is 46 minutes
+
+```{r, echo=FALSE,fig.width = 5, fig.height = 3}
+# Create density plot of police notified time, split by day of week
+# ggplot(df_cleaned, aes(x = police_notified_time, color = factor(CRASH_DAY_OF_WEEK))) +
+#   stat_density(geom = "line", alpha = 0.5, na.rm = TRUE, position = "fill") +
+#   labs(title = "Distribution of Police Notified Time by Day of Week", x = "Police Notified Time (minutes)", y = "Density") +
+#   xlim(0, 300) +
+#   scale_color_discrete(name = "Day of Week", labels = c("Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"))
+```
+
+##### Fig 3: Distribution of Time Taken to Notify Across Different Times of the Day
+
+\centering
+
+```{r, echo=FALSE,fig.width = 6, fig.height = 2.5, warning=FALSE}
+# ggplot(avg_time_to_notify, aes(y=avg_time_to_resp, x=crash_hour)) + 
+#     geom_bar(position="dodge", stat="identity") +
+#   theme(axis.text.x = element_text(angle = 90))
+
+
+df_cleaned %>% 
+  mutate(crash_hour = case_when(CRASH_HOUR < 4 ~ "12 AM - 4 AM",
+                                CRASH_HOUR < 8 ~ "4 AM - 8 AM",
+                                CRASH_HOUR < 12 ~ "8 AM - 12 PM",
+                                CRASH_HOUR < 16 ~ "12 PM - 4 PM",
+                                CRASH_HOUR < 20 ~ "4 PM - 8 PM",
+                                CRASH_HOUR < 24 ~ "8 PM - 12 AM"),
+         crash_hour = factor(crash_hour, ordered=T, 
+                             levels = c("12 AM - 4 AM",
+                                        "4 AM - 8 AM",
+                                        "8 AM - 12 PM",
+                                        "12 PM - 4 PM",
+                                        "4 PM - 8 PM",
+                                        "8 PM - 12 AM"))) %>% 
+  ggplot(., aes(x = crash_hour,  y = police_notified_time))+ 
+  geom_boxplot(outlier.shape=NA)+
+  # geom_jitter(aes(color = crash_hour)) +
+  ylim(0, 300) +
+  theme_bw() + 
+  xlab("Time of the day") + 
+  ylab("Time taken to Notify (Minutes)")
+
+```
+
+\raggedright
+
+##### Fig 4: Distribution of Average Time Taken to Notify Across Different Damage Types
+
+\centering
+
+```{r, echo=FALSE,fig.width = 3, warning=FALSE}
+library(gt)
+
+# Create crosstab for average of police notified time with distinct values of crash type
+df_crosstab <- aggregate(df_cleaned$police_notified_time, list(df_cleaned$DAMAGE), mean, na.rm = TRUE)
+
+# Rename columns
+colnames(df_crosstab) <- c("Damage ($)", "Average time taken to notify Police (Minutes)")
+df_crosstab[,2] <- round(df_crosstab[,2],0)
+
+# Format output as table
+gt(df_crosstab) 
+```
+
+\raggedright
+
+### 3.2 For Damage Class (Categorical Outcome)
+
+Major Damage (\>\$1500) is much more common than Minor Damage (\<\$1500) in the Chicago Traffic Crashes data. We can view this distribution across different dependent variables such as street direction, or posted speed limit.
+
+-   Street directions South and West have a higher number of crashes, both major as well as minor
+
+-   Posted speed limit 30 has the highest number of crashes, with 258,700 major damage and 155,725 minor damage
+
+-   Intersection related crashes have a much higher share of major damages than minor damages
+
+##### Fig 5: Number of Crashes across Street Directions
+
+\centering
+
+```{r, echo=FALSE,fig.width = 5, fig.height = 2.5}
+ggplot(df_cleaned %>% 
+         rename(`Damage Class` = damage_class), aes(x = factor(STREET_DIRECTION), y = after_stat(count), fill = `Damage Class`)) +
+  geom_bar() +
+  labs(title = "Number of Crashes Across Street Directions",
+       x = "Street Direction",
+       y = "Number of Crashes") +
+  geom_text(stat = "count", aes(label = scales::comma(after_stat(count))), position = position_stack(vjust = 0.5)) +
+  scale_y_continuous(labels = scales::comma)
+```
+
+\raggedright
+
+## 4. Other Characteristics
+
+### 4.1 Date and Time Data
+
+Information like crash hour (between 0 to 23 based on hour of the day), crash day of week (between 0 to 7 depending on day of the week), and crash month (January to December depending on the month) can be used to ascertain the times when the highest amount of crashes occurred.
+
+##### Fig 6: Number of Crashes across the Year, Week, or Day
+
+\centering
+
+```{r, echo=FALSE,fig.width = 7, fig.height = 3, warning=FALSE}
+p1 <- ggplot(df_cleaned, aes(x = cut(CRASH_HOUR, breaks = seq(0, 24, by = 4)), y = ..count..)) +
+  geom_bar(fill="#69b3a2") +
+  ggtitle("By hour") +
+  scale_y_continuous(name = "Number of Crashes", expand = c(0, 0), labels = scales::comma) +
+  scale_x_discrete(name = "Hour of day", labels = c("12 AM - 4AM", "4 AM - 8AM", "8AM - 12PM", "12PM - 4PM", "4PM - 8PM", "8PM - 12AM")) +
+  theme(axis.text.x = element_text(angle = 90))
+
+p2 <- ggplot(df_cleaned, aes(x = factor(CRASH_DAY_OF_WEEK), y = ..count..)) +
+  geom_bar(fill="#69b3a2") +
+  ggtitle("By weekday") +
+  scale_y_continuous(name = "Number of Crashes", expand = c(0, 0), labels = scales::comma) +
+  scale_x_discrete(name = "Day of week", labels = c("Mon", "Tue", "Wed", "Thu", "Fri", "Sat","Sun")) +
+  theme(axis.title.y = element_blank(), axis.text.x = element_text(angle = 90))
+
+p3 <- ggplot(df_cleaned, aes(x = factor(CRASH_MONTH), y = ..count..)) +
+  geom_bar(fill="#69b3a2") +
+  ggtitle("By month") +
+  scale_y_continuous(name = "Number of Crashes", expand = c(0, 0), labels = scales::comma) +
+  scale_x_discrete(name = "Month of year", labels = c("Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec")) +
+  theme(axis.title.y = element_blank(), axis.text.x = element_text(angle = 90))
+
+na <- grid.arrange(p1, p2, p3, ncol = 3, top = "", bottom = " ") +
+  theme(plot.margin = unit(c(1, 1, 2, 1), "lines"))
+```
+
+\raggedright
+
+-   Most common time of the day - 12PM to 4PM
+-   Most common days of the week - Fridays and Saturdays
+-   Most common crash hours - July, August, and September
+
+### 4.2 Weather and Lighting Data
+
+Similar analysis can be done for weather and lighting details, and road conditions. We observed that **65.6%** crashes occur during daylight, **79.8%** occur with clear weather, and **44%** occur in non-divided roads.
+
+## 5. Potential Challenges
+
+-   Code is missing in the original source, so we need to interpret variables based solely on variable names.
+
+-   Missing values or unknown values in columns such as device condition, road surface condition, and road defects need to be addressed or removed, depending on different circumstances.
+
+-   Outliers and unreasonable values in variables, such as police response times exceeding 1000 minutes in the dataset, need to be cleaned and adjusted.
+
+-   For categorical variables, some, like primary contributory cause, posted speed limit, and weather conditions, exhibit imbalances with one category dominating.
+
+-   If we manually clean and fill in the dataset, many assumptions need to be made, which might not accurately reflect real-world situations.
+
+-   The predictors in the dataset are categorical variables. It may be necessary to merge this dataset with another one to include additional continuous variables, such as daily temperature or distance to downtown.
