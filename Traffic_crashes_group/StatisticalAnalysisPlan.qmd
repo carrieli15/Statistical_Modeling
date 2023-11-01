@@ -1,0 +1,75 @@
+---
+title: "\\textbf{Statistical Analysis Plan}"
+format: pdf
+editor: visual
+geometry:
+     - top=9mm
+     - left=11mm
+     - right=11mm
+header-includes:
+   - "\\usepackage{booktabs}"
+   - "\\usepackage{titling}"
+author: "Group 12: Divya Sharma (ds655), Dhaval Potdar(dsp50), Jiayi Zhou (jz456), Jiechen Li (jl1254)"
+---
+
+## 1. Data Overview
+
+**Dataset**: The data-set has data on Traffic Crashes in Chicago from 2015 onwards, and contains details of each crash, including:
+
+• `Location`: The latitude and longitude of the crash.
+
+• `Date and time`: The date and time of the crash.
+
+• `Injuries`: The number and type of injuries that occurred.
+
+• `Damage`: The estimated damage cost of the crash.
+
+• `Crash type`: The details about the type of crash - hit and run, no right of way, intersection related, causes etc.
+
+• `Conditions`: The details about the weather, lighting, traffic, traffic control devices, and roads etc.
+
+This data can be used to identify the probabilities of crashes happening, and their eventual consequences, given the surrounding situations such as time of day, weather, road conditions, traffic conditions, lighting, and roadway surface etc.
+
+**Source**: The dataset was obtained from an online repository, though the specific origin or institution responsible for its collection and maintenance was not specified. The dataset is selected from [City of Chicago's official page](https://data.cityofchicago.org/Transportation/Traffic-Crashes-Crashes/85ca-t3if).
+
+**Sample Size**: The dataset contains a total of 769,100 observations.
+
+**Number of Variables**: There are 49 variables in the dataset.
+
+**Collection Method**: The data is collected from traffic crash reports in Chicago. These reports can be sourced from various entities such as traffic police, surveillance systems, or reporting by involved parties. The exact method of data collection, however, has not been provided.
+
+**Unit of Analysis**: Each row in the dataset represents a unique traffic crash incident in Chicago. The details of the crash, including specifics like location, time, type of crash, conditions at the time of the crash, and the aftermath (like injuries and damages), are captured across the 49 variables.
+
+**Research Questions**:
+
+1.  Given that there is a crash, based on the location, time, crash type, and surrounding road and traffic conditions, how much damage is to be expected (\<=1.5K\$ or \>1.5K\$)?
+
+-   **Outcome Variable** - Damage (\<=1.5K\$ or \>1.5K\$) - categorical variable
+-   **Input/Explanatory Variables** - Location, date, time of the day, crash type, and surrounding conditions
+
+2.  How long it takes in minutes for police to be notified upon accident, given the nature of the accident?
+
+-   **Outcome Variable** - Police Notification Time (in minutes) - continuous variable
+-   **Input/Explanatory Variables** - Location, date, time of the day, crash type, and surrounding conditions.
+
+## 2. Modeling
+
+*2.1 Model Types* - Since our first research question is a binary classification problem, we will use a *Logistic Regression* model. For our second research question, since the outcome is a continuous variable, we will use a *Linear Regression* model.
+
+*2.2 Inference or Prediction* - Both the research questions are prediction questions. Because of that, we can easily transform any variable if needed. In terms of variable selection, we can include any variables we want in the prior selection. In terms of model assessment, we can use cross-validation to compare different models. For logistic regression, the confusion matrix and the ROC curve can be used. Interpretation of the coefficients is not as important as before.
+
+*2.3 Variables* - Variables we will include for both of them include the location (distance to downtown that will be calculated based on latitude and longitude variables in the dataset), posted speed limit, crash type, traffic conditions such as the weather, lighting, traffic control devices, and road conditions.
+
+*2.4 Interaction Term* - We are interested in the relationship between the distance to downtown and the posted speed limit, so we will include interaction with the distance to downtown and the posted speed limit.
+
+## 3. Potential Challenges
+
+*3.1 Missing Original Source* - We were able to locate a data dictionary for the same.
+
+*3.2 Missing Values* - Our first approach will be to remove the rows that have NAs in them. This is a viable solution since we have enough data in both classes for the classification part of this assignment. Our second approach would be to use any of the standard imputation techniques such as mean imputation.
+
+*3.3 Outliers and Unreasonable Values* - Our approach would be to refer to the source of the dataset and see if there is a plausible explanation for the outliers. If none is found, we will remove these erroneous values.
+
+*3.4 Categorical Variables have High Imbalance* - We will include these variables in the first iteration of model building, and basis their standard error, we may group them up into fewer classes, etc.
+
+*3.5 Majorly categorical variables* - We will create a distance to the downtown variable that is continuous. It will be calculated based on latitude and longitude variables in the dataset.
