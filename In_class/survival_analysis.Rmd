@@ -1,0 +1,150 @@
+
+#ISLR Lab 11.8, book page 483
+
+```{r}
+#Brain Cancer Data
+library(ISLR2)
+```
+
+```{r}
+ names(BrainCancer)
+```
+
+```{r}
+# examine data
+attach(BrainCancer)
+table(sex)
+```
+
+```{r}
+table(diagnosis)
+```
+
+```{r}
+table(status)
+```
+
+```{r}
+library(survival)
+fit.surv <- survfit(Surv(time, status) ~ 1)
+plot(fit.surv, xlab = "Months",
+     ylab = "Estimated Probability of Survival")
+```
+
+```{r}
+# Kaplan-Meier survival curves
+fit.sex <- survfit(Surv(time, status) ~ sex)
+plot(fit.sex, xlab = "Months", ylab = "Estimated Probability of Survival", col = c(2,4))
+legend("bottomleft", levels(sex), col =c(2,4), lty = 1)
+```
+
+```{r}
+# log-rank test
+logrank.test <- survdiff(Surv(time, status) ~ sex)
+logrank.test
+```
+
+```{r}
+# fit Cox proportional hazards models
+fit.cox <- coxph(Surv(time, status) ~ sex)
+summary(fit.cox)
+```
+
+```{r}
+summary(fit.cox)$logtest[1]
+
+summary(fit.cox)$waldtest[1]
+
+summary(fit.cox)$sctest[1]
+```
+
+```{r}
+logrank.test$chisq
+```
+
+```{r}
+fit.all <- coxph(
+Surv(time, status) ~ sex + diagnosis + loc + ki + gtv +
+stereo)
+
+fit.all
+```
+```{r}
+modaldata <- data.frame(
+diagnosis = levels(diagnosis), sex = rep("Female", 4),
+loc = rep("Supratentorial", 4), ki = rep(mean(ki), 4),
+gtv = rep(mean(gtv), 4),
+stereo = rep("SRT", 4)
+)
+```
+
+```{r}
+survplots <- survfit(fit.all, newdata = modaldata)
+plot(survplots, xlab = "Months",
+ylab = "Survival Probability", col = 2:5)
+legend("bottomleft", levels(diagnosis), col = 2:5, lty = 1)
+```
+
+# Publication Data
+```{r}
+fit.posres <- survfit(
+ Surv(time, status) ~ posres, data = Publication)
+plot(fit.posres, xlab = "Months",
+ylab = "Probability of Not Being Published", col = 3:4)
+legend("topright", c("Negative Result", "Positive Result"), col = 3:4, lty = 1)
+```
+
+```{r}
+fit.pub <- coxph(Surv(time, status) ~ posres, data = Publication)
+fit.pub
+```
+
+```{r}
+# log-rank test
+logrank.test <- survdiff(Surv(time, status) ~ posres, data = Publication)
+logrank.test
+```
+
+```{r}
+fit.pub2 <- coxph(Surv(time, status) ~ . - mech, data = Publication)
+fit.pub2
+```
+
+# Call Center Data
+```{r}
+set.seed(4)
+N <- 2000
+Operators <- sample(5:15, N, replace = T)
+Center <- sample(c("A", "B", "C"), N, replace = T)
+Time <- sample(c("Morn.", "After.", "Even."), N, replace = T)
+X <- model.matrix( ~ Operators + Center + Time)[, -1] 
+```
+
+
+```{r}
+# specify the coefficients and the hazard function
+true.beta <- c(0.04, -0.3, 0, 0.2, -0.2)
+h.fn <- function(x) return(0.00001 * x)
+```
+
+
+```{r}
+#install.packages("MatrixModels")
+#library(MatrixModels)
+#library(rms)
+#library(coxed) I can use survival library instead of using coxed
+```
+
+```{r}
+# Cox proportional hazards model
+library(rms)
+queuing <- sim.survdata(N = N, T = 1000, X = X,
+beta = true.beta, hazard.fun = h.fn)
+names(queuing)
+```
+
+
+```{r}
+library(coxed)
+```
+

@@ -1,0 +1,175 @@
+---
+title: "Analysis of COVID-19 Vaccine-Associated Transient Global Amnesia: Insights from the WHO Safety Database"
+author: "Jiechen Li"
+format: pdf
+editor: visual
+---
+
+# Introduction
+
+The deployment of COVID-19 vaccines have been a cornerstone in combating the global pandemic. With this unprecedented pace of vaccine spread, monitoring the safety and reporting adverse events have become paramount. A recent article titled "COVID-19 Vaccine-Associated Transient Global Amnesia: A Disproportionality Analysis of the WHO Safety Database" (Merino et al., 2022) examines the relationship between COVID-19 vaccines and the incidence of transient global amnesia (TGA). This report analyzes the article's findings, methodology, and implications to answer the concern whether COVID vaccine gives people amnesia or not. Additionally, this extended analysis explore the nuances of statistical methodologies like linear regression, logistic regression, Poisson, Ordinal, and Multinomial GLMs, applying them to understand and interpret the data presented in the article.
+
+# Research Question
+
+The central inquiry of the article is to determine whether there is a statistically significant association between COVID-19 vaccination and the occurrence of TGA. The investigation is critical, considering the widespread use of these vaccines and the importance of understanding their safety profile.
+
+# Outcome of Interest
+
+The primary outcome of interest is the occurrence of TGA following the administration of a COVID-19 vaccine. TGA is characterized by sudden, temporary memory loss, which is not associated with any other cognitive impairments. Understanding its association with COVID-19 vaccines is crucial for both clinicians and vaccine recipients.
+
+# Data Collection
+
+The data for this analysis were sourced from the [WHO's VigiBase](https://who-umc.org/vigibase/vigibase-who-s-global-database/), a comprehensive database that gathers global adverse drug reaction reports in Uppsala, Sweden. The study focused on reports of TGA post COVID-19 vaccination, up to December 6, 2021. This approach provided a broad and diverse dataset for analysis.
+
+# Comparison Groups
+
+The comparison in this study involves individuals who experienced TGA after receiving different COVID-19 vaccines, such as Tozinameran, AZD1222, Elasomeran, and JNJ-78436735. These groups allow for the comparison of TGA incidence across various vaccine types.
+
+# Statistical Analysis Method
+
+The study employs disproportionality analysis, utilizing the Reporting Odds Ratio (ROR) and Information Component (IC) as key metrics. This method is instrumental in pharmacovigilance to detect unusual patterns in adverse drug reaction reporting. The ROR compares the odds of reporting TGA post-vaccination against the odds of this event with all other drugs in the database. The IC, meanwhile, evaluates the strength of the association between the vaccine and TGA, considering the expected frequency of reports in the database.
+
+For a more robust analysis, we will integrate linear regression, logistic regression, Poisson, ordinal, and multinomial GLMs approaches to assess the data.
+
+## Linear Regression
+
+Linear regression could be used to predict the continuous variable of time to onset of TGA post-vaccination, using variables like age, gender, vaccine type, and dosage.
+
+**Application:** 
+
+- **Variables:** Age (numeric), gender (binary: male/female), vaccine type (categorical: different vaccine brands), dosage (numeric).
+
+- **Model Evaluation:** 
+  - **Interaction Terms:** Consider interactions such as age x vaccine type or gender x dosage to explore if the impact of age on the time to onset of TGA varies by vaccine type or if the effect of dosage differs between genders.
+  - **Model Evaluation with Interaction Terms:** The inclusion of interaction terms necessitates checking for increased multicollinearity (using VIF), and interpreting the coefficients becomes more complex as they now represent conditional effects.
+  - **Residuals vs. Fitted Plot:** To check the assumption of linearity and homoscedasticity. This plot should ideally show a random scatter of points, indicating consistent variance of residuals.
+  - **QQ Plot (Quantile-Quantile Plot):** For assessing the normality of residuals. If the residuals are normally distributed, they will align closely with the diagonal line.
+  - **Scale-Location Plot (or Spread-Location Plot):** To verify homoscedasticity (constant variance) of residuals across the range of fitted values.
+  - **Residuals vs. Leverage Plot:** To identify influential cases that have an undue influence on the model. Points with high leverage and large residuals are of particular concern.
+  - **Cross-Validation:** For assessing model performance on unseen data.
+  - **Cook's Distance:** To identify influential outliers that could significantly affect the model’s predictions.
+  - **P-value:** To assess the statistical significance of each predictor.
+  - **Variance Inflation Factor (VIF):** To assess multicollinearity among independent variables.
+  - **Adjusted R²:** To evaluate the model's explanatory power while penalizing for adding non-informative predictors.
+
+## Logistic Regression
+
+Logistic regression is ideal for binary outcomes. It could be applied to predict the likelihood of TGA occurrence based on vaccine type and demographic factors.
+
+**Application:** 
+
+- **Variables:** Vaccine type (categorical), age (numeric), gender (binary), and any pre-existing conditions (binary or categorical).
+
+- **Model Evaluation:**
+  - **Interaction Terms:** Introduce terms like vaccine type x age or gender x pre-existing conditions. This can illustrate, for instance, whether the likelihood of TGA occurrence for a specific vaccine is different across age groups or if the gender effect on TGA likelihood varies with pre-existing conditions.
+  - **Model Evaluation with Interaction Terms:** Similar to linear regression, the inclusion of interaction terms in logistic regression requires careful interpretation. The coefficients of the interaction terms indicate how the log odds of the outcome changes when both predictors change, and this needs to be contextualized within the model's framework.
+  - **P-value and Coefficients:** To determine the significance and impact of each predictor.
+  - **Odds Ratios:** To interpret the effect size of the predictors.
+  - **Receiver Operating Characteristic (ROC) Curve and AUC:** To assess the model’s ability to discriminate between the presence and absence of TGA.
+  - **Confusion Matrix:** To understand the model's performance in terms of sensitivity and specificity.
+  - **Cross-Validation:** To validate the model's predictive accuracy on different subsets of the dataset.
+
+## Poisson GLM
+
+Given the count nature of TGA cases, a Poisson GLM would be suitable for modeling the rate of TGA occurrences, especially useful in comparing rates across different vaccines.
+
+**Application:**
+
+- **Variables:** Count of TGA cases (numeric), time since vaccination (numeric), age group (categorical), vaccine type (categorical).
+
+- **Model Evaluation:**
+  - **Goodness of Fit:** Assessing how well the model explains the data.
+  - **Overdispersion Test:** Checking if the Poisson model is appropriate or if a negative binomial model is more suitable.
+  - **Likelihood Ratio Test:** Comparing the model with and without certain predictors to assess their importance.
+
+## Ordinal GLM
+
+If the severity of TGA were categorized into ordered levels, ordinal GLM could be employed to analyze these data, providing insights into the severity of TGA cases associated with each vaccine.
+
+**Application:**
+
+- **Variables:** Severity of TGA (ordinal levels), demographic factors (age, gender - categorical), vaccine type (categorical).
+
+- **Model Evaluation:**
+  - **Proportional Odds Assumption:** Checking if the relationship between each pair of outcome groups is the same.
+  - **Cumulative Odds Ratios:** To interpret the effects of the predictors on the ordered outcome.
+  - **Likelihood Ratio Test:** For comparing nested models to see if additional predictors improve the model.
+  - **Classification Table:** Also known as a confusion matrix for ordinal outcomes, it shows the frequency of correct and incorrect predictions compared to the actual categories. This table helps assess the model's predictive accuracy for each level of the ordinal outcome.
+  - **Pseudo-R-squared Values:** These values provide an indication of the model's explanatory power. Unlike the traditional R-squared in linear regression, pseudo-R-squared values in ordinal GLM (like McFadden's, Cox and Snell's, or Nagelkerke's R-squared) do not have a direct interpretation of variance explained but offer a relative measure of model fit improvement over a null model.
+
+## Multinomial GLM
+
+This method could be utilized if TGA cases were classified into multiple categories, such as severity, recovery time, and associated symptoms.
+
+**Application:**
+
+- **Variables:** TGA case categorization (multinomial: severity, recovery time, symptoms), patient demographics (categorical and numeric), vaccine type (categorical).
+
+- **Model Evaluation:**
+  - **P-values and Coefficients:** For each level of the response variable to understand the impact of predictors.
+  - **Multinomial Odds Ratios:** To interpret the relationship between predictors and the multinomial response.
+  - **Likelihood Ratio Test (LRT):** This test compares the fit of the model against a simpler, nested model or the null model (with no predictors). It assesses whether adding predictors significantly improves the model fit.
+  - **Pseudo-R-squared Values:** In Multinomial GLM, traditional R-squared values are not applicable. Instead, pseudo-R-squared measures like McFadden's R-squared are used. These provide an indication of the model's explanatory power relative to a null model.
+  - **Model Fit Statistics:** Metrics like Akaike Information Criterion (AIC) or Bayesian Information Criterion (BIC) are crucial for comparing different multinomial models. Lower values generally indicate a better model fit, taking into account the number of predictors.
+  - **Confusion Matrix for Multiclass Classification:** Similar to binary classification, a confusion matrix can be extended to multiclass outcomes. It shows the frequency of correct and incorrect predictions across all categories and is essential for assessing the model's predictive accuracy.
+  - **Residual Diagnostics:** While residuals in Multinomial GLM are more complex than in linear models, analyzing patterns in residuals can still provide insights. This might involve examining the residuals for each response category or looking at the aggregate residuals.
+  - **Validation through Cross-Validation:** Particularly important for models with multiple predictors and categories. Cross-validation techniques, like k-fold cross-validation, help assess how the model performs on different subsets of the data, indicating its generalizability and robustness.
+
+In summary, for each of these models, the selection of variables should be guided by the information provided in the article and theoretical knowledge about the factors influencing TGA. The evaluation methods chosen will help in validating the model, understanding the influence of predictors, and ensuring the robustness of the conclusions drawn from the analysis.
+
+# Data Interpretation Using Advanced Statistical Methods
+
+## Interpretation of Tables Using GLMs
+
+Table 1, showing characteristics of TGA reports, could be analyzed using multinomial GLM to understand the distribution of cases across different vaccines and demographic factors.
+
+   - **Purpose:** To analyze the distribution of TGA cases across different vaccine types and demographic factors like age and gender.
+   - **Method:** Multinomial GLM is suitable for categorical outcomes (e.g., type of vaccine). It can reveal if certain demographic groups are more likely to report TGA with specific vaccines.
+   - **Extended Interpretation:** By including interaction terms (e.g., vaccine type x age group), we can understand if the likelihood of TGA varies not just with vaccine type, but also within different age groups. This could help identify specific populations at higher risk.
+
+Table 2, displaying the disproportionality analysis, could be further examined using Poisson GLM to assess the rate of TGA cases relative to the total number of vaccinations.
+
+   - **Purpose:** To assess the rate of TGA cases in relation to the total number of vaccinations, providing a rate per vaccine type.
+   - **Method:** Poisson GLM is appropriate for count data. It can model the number of TGA cases as a function of the number of vaccinations, adjusted for time or other relevant factors.
+   - **Extended Interpretation:** Overdispersion checks are important here. If present, a negative binomial model might be more suitable. Additionally, exploring the interaction between vaccine type and demographic variables could provide insights into whether certain vaccines are associated with higher rates of TGA in specific subpopulations.
+
+## Combining Results with Advanced Statistical Analysis
+
+Comparison of RORs - Logistic Regression:
+
+   - **Purpose:** To compare the odds of TGA occurrence across different vaccines, while controlling for potential confounding variables.
+   - **Method:** Logistic regression can be used to model the probability of TGA occurrence as a function of the vaccine type, including covariates like age, gender, and medical history.
+   - **Extended Interpretation:** Interaction terms might reveal if the effect of a particular vaccine on TGA risk is modified by other variables. For instance, does the risk associated with a specific vaccine increase for older adults or those with pre-existing conditions?
+
+Time to Onset of TGA - Linear Regression:
+
+   - **Purpose:** To explore factors that might influence the time to onset of TGA following vaccination.
+   - **Method:** Linear regression is ideal for modeling a continuous outcome like time to onset. Predictor variables might include vaccine type, dosage, patient age, and health status.
+   - **Extended Interpretation:** Here, residuals analysis and checking for homoscedasticity become crucial. Understanding whether the time to onset varies significantly between vaccines and if this variation is consistent across different patient demographics can be critical for healthcare recommendations.
+
+In summary, extending the analysis of the tables with GLMs allows for a more nuanced understanding of the data. It moves beyond basic associations to explore how different factors interact and contribute to the risk of TGA following COVID-19 vaccination. This approach can unearth valuable insights that might inform vaccine safety monitoring and targeted health interventions.
+
+# Appropriateness and Improvement of the Statistical Method
+
+Disproportionality analysis is a suitable method for initial signal detection in pharmacovigilance. However, it has its limitations. It cannot establish causality and is susceptible to reporting biases and under-reporting. An improvement could be the integration of this method with case-control studies or cohort studies, which can provide a more robust causal inference. Also, the use of GLMs and regression analyses offers a more comprehensive perspective, adjusting for potential confounders and exploring the relationships between various factors and the occurrence of TGA. Additionally, adjusting for potential confounders such as age, gender, and comorbidities could refine the analysis.
+
+# Conclusions
+
+The analysis indicates a statistical association between the administration of COVID-19 vaccines and the occurrence of TGA. Yet, due to the methodological constraints of disproportionality analysis, it is inappropriate to assert that the vaccine is the direct cause of TGA. The findings should be interpreted as an indication of a possible association, warranting further investigation, rather than conclusive evidence of causation.
+
+## Friend's Conclusion
+
+The claim that "COVID vaccine gives people amnesia" is a misinterpretation of the study's findings. Such a statement oversimplifies the complex relationship between vaccine administration and TGA occurrence, misleadingly suggesting a direct cause-and-effect relationship.
+
+## Authors' Conclusion
+
+The authors of the article indicate a statistically significant association between COVID-19 vaccines and TGA. However, they prudently acknowledge the limitations of their study, particularly its inability to conclusively establish causality between the vaccine and TGA.
+
+# Implications 
+
+The article provides valuable insights into the safety profile of COVID-19 vaccines, highlighting a potential association with TGA. However, the conclusions drawn must be tempered with an understanding of the limitations inherent in the analysis. The findings underscore the need for ongoing surveillance and research into the safety of COVID-19 vaccines. It is essential to balance these findings with the known benefits of vaccination in controlling the COVID-19 pandemic. It highlights the need for careful interpretation of data, considering various factors that can influence outcomes. Future studies should aim to establish more definitive causal relationships, ideally through methodologies capable of adjusting for confounding variables and offering stronger evidence of causality.
+
+# Reference
+
+Merino, D., Gérard, A. O., Van Obberghen, E. K., Ben Othman, N., Ettore, E., Giordana, B., Viard, D., Rocher, F., Destere, A., Benoit, M., & Drici, M. D. (2022). COVID-19 vaccine-associated transient global amnesia: A disproportionality analysis of the WHO safety database. *Frontiers in Pharmacology, 13*, 909412. https://doi.org/10.3389/fphar.2022.909412 
+

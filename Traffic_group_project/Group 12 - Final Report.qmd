@@ -1,0 +1,417 @@
+---
+title: "\\textbf{Traffic Crashes EDA}"
+date: "10/20/2023"
+format:
+  pdf:
+    include-in-header:
+      text: |
+        \addtokomafont{disposition}{\rmfamily}
+editor: visual
+header-includes:
+   - "\\usepackage{booktabs}"
+   - "\\usepackage{titling}"
+author: "Group 12: Divya Sharma (ds655), Dhaval Potdar(dsp50), Jiayi Zhou (jz456), Jiechen Li (jl1254)"
+execute:
+  echo: false
+  warning: false
+---
+
+# Abstract
+
+With 80,000 car accidents reported in Chicago in 2023, there is a critical need for cities to address this escalating crisis by analyzing high-risk conditions and implementing targeted interventions to prevent further harm to life and property. In this project, we analyze data on road crashes maintained by the city of Chicago between January 2022 and December 2022, and predict two quantities - (i) the time taken for the authorities to be notified about a certain crash, and (ii) whether the damage cost would exceed \$1500. Utilizing a linear regression model, police notified time prediction can be made based on variables like hour of the day, traffic way type, and an interaction term between precipitation and month; however, enhancements are required to boost prediction accuracy. Similarly, employing a logistic regression model facilitates damage class prediction based on temperature, speed limit, visibility, and distance to downtown with a moderate level of accuracy. While these models enable authorities to simulate scenarios identifying conditions posing the most threat to drivers, ongoing performance improvements are essential for reliable use.
+
+# Introduction
+
+As of September 2023, a total of 80,000 car accidents have been reported this year, in Chicago alone. In the last five years, an average of 110,000 accidents have been reported annually, leading to 21,000 injuries. About 60% of these crashes cost more than \$1500 in damages. With a 0.35% year-on-year increase in car ownership in Chicago[^1], these numbers are only expected to go up. One way for cities to combat this situation is to analyze conditions that pose the most risk to life and property, and introduce interventions such as road-side warnings, additional police patrolling, etc. in high risk areas and under high risk conditions.
+
+[^1]: Pearce, R. (n.d.). Forbes Advisor - Smart Financial Decisions Made Simple. Forbes Advisor. <https://www.forbes.com/advisor/>
+
+The goal of this analysis is to answer two questions:
+
+1.  Given the conditions of a crash, how long does it take for authorities to be officially notified in minutes.
+
+2.  Given the conditions of a crash, would the monetary damages be major (\>\$1500) or minor (\$\<1500).
+
+The primary data source for this project is city of Chicago's official website[^2]. The dataset has information on crashes from 2015 to September 2023 and spans across 784K rows and 84 columns. However, for our analysis, we only consider data from 2022. This brings down the number of rows to 76,820. Some sample colums that we use for modeling are - time of day, day of week, and speed limit. We also use an external dataset sourced from an online proprietary weather data service[^3]. This dataset gives weather-related information such as precipitation, snow, visibility, etc. for Chicago for every day in our main dataset.
+
+[^2]: City of Chicago \| Data Portal \| City of Chicago \| Data Portal. (n.d.). Chicago. <https://data.cityofchicago.org/>
+
+[^3]: Weather Data & Weather API \| Visual Crossing. (n.d.). Www.visualcrossing.com. <https://www.visualcrossing.com/>
+
+Since it is not possible to gather data at the exact instant that a crash occurs, our models gives representative pictures as to what should be expected, given the conditions of a crash. These models can be used by authorities to identify crash conditions that pose the most threat to life and property. This in turn, would let authorities identify infrastructure gaps such as inadequate surveillance or lack of mobile coverage leading to a delay in notifying authorities about crashes. Also, certain conditions that lead to consistently higher monetary damages may signal a problem with road quality or inadequate speed restrictions. With a five-year average of over 100K annual accidents in Chicago, even a 1% average reduction in the time taken to notify authorities about a crash could save lives, and potentially save millions in damages annually.
+
+# Methods
+
+## Data
+
+From the main dataset from Chicago's official website, we used the crash latitude and longitude to calculate the distance of the crash from downtown Chicago using Haversine distance. We then left-joined the weather data onto the main dataset on the date column, and then did a sanity check to ensure no duplicates were introduced. Lastly, we checked for null and improbable values and removed them from the dataset. In total, we removed 28% of the original dataset due to missing values.
+
+## Models
+
+**In reference to the first research question**, our target variable is a continuous variable that indicates the time taken for authorities to be notified about a crash. The target variable is calculated as the time difference between the moment of the incidence, and the moment the police were first notified.
+
+The a priori selection of the predictor variables was made by analyzing patterns in the data that indicated a possible relationship with the target variable. We then chose the year 2022, for which we have the complete data. The reason we did this was because we observed significant variation in the data across years, which was difficult to model. Given the heavily right-skewed distribution of police notification times, with tails exhibiting only a few observations exceeding 60 minutes, where limited information is available, we have opted to restrict the analysis to police notification times within a 60-minute timeframe. The final model comprised of variables such as month of year, hour of day, traffic way type, distance to downtown and weather-related variables such as temperature, snowfall, and an interaction term between precipitation and month of year.
+
+**In reference to the second research question**, the dependent variable assesses whether monetary damages are categorized as major (\>\$1500) or minor (\$\<1500). We employed Logistic regression due to the binary nature of the outcome variable, which manifests as either major damages (\>\$1500) or minor damages (\$\<1500).
+
+To identify factors influencing the amount of damages, we conducted a priori selection of variables, encompassing elements such as the time of the accident, speed limit, distance from downtown, road type, road surface condition, and weather-related factors such as temperature, weather conditions, wind speed, and precipitation. Additionally, we are exploring the interaction between snow and visibility.
+
+## Model Assessment
+
+**To assess the Linear Regression model**, we assess the assumptions by plotting residuals, examining the fitted values versus residuals plot to identify patterns indicating potential non-linearity and violations of equal variance. The normal Q-Q plot is employed to verify the normality assumption, while the residuals versus leverage plot aids in detecting potential influential points.
+
+Regarding model performance evaluation aligned with our predictive objective, the metric used is the adjusted R-squared. A score of 1 indicates a perfect fit, whereas a score of 0 signifies poor model performance.
+
+**To assess Logistic Regression model**, we assess potential issues such as multicollinearity and influential data points. Initially, for multicollinearity, we utilize the Variance Inflation Factor (VIF). Subsequently, we identify influential points using Cook's distance, derived from the residuals versus leverage plot. If any points with high Cook's distance are evident in the plot, we iteratively remove them and re-run the analysis. This process continues until removing points no longer alters our results at the significance level, ensuring the robustness of our conclusions.
+
+For model performance evaluation, given our predictive objective, the ROC curve was employed to determine the optimal cutoff point. Simultaneously, a confusion matrix was utilized to assess the model, wherein accuracy, kappa, precision, and F1 score were pivotal. Given the larger than \$1,500 damage size indicating the severity of the accident, emphasis was placed on the true positive rate (also named sensitivity/recall).
+
+# Results
+
+```{r}
+library(tidyverse)
+library(pROC)
+library(caret)
+library(cvms)
+library(ggplot2)
+library(RColorBrewer)
+library(gridExtra)
+
+base_data <- readRDS(file='df_cleaned_chicago_crashes.rds')
+
+base_data_filtered_glm <- base_data %>% 
+  rename(`Damage Class` = damage_class) %>% 
+  filter(crash_date >= as.Date('2022-01-01') & crash_date <= as.Date('2022-12-31')) %>%
+  rename(`Police Notified Time` = police_notified_time) 
+
+base_data_filtered <- base_data %>% 
+  filter(police_notified_time < 60) %>%
+  filter(crash_date >= as.Date('2022-01-01') & crash_date <= as.Date('2022-12-31')) %>%
+  rename(`Police Notified Time` = police_notified_time) 
+
+```
+
+## Exploratory Data Analysis
+
+After processing the data using the aforementioned method, the dataset comprises 555,356 observations and 18 variables.
+
+In the context of the research focusing on police notification time, we identified that the median notification time is 25 minutes, the mean is 110 minutes (equivalent to 1 hour and 50 minutes), and the maximum recorded time is 1440 minutes (representing 1 day).
+
+##### Fig 1: Police Notification Time
+
+\center
+
+```{r,fig.width = 4, fig.height = 2.5}
+base_data %>%
+  ggplot(aes(x=police_notified_time)) +
+  geom_histogram(binwidth=0.25, fill="#69b3a2", color="#e9ecef", alpha=0.9) +
+  ggtitle("Police Notification Time") +
+  xlab("Time in Minutes") +
+  ylab("Count") +
+  # annotation_logticks() +
+  scale_x_log10(
+   breaks = scales::trans_breaks("log10", function(x) 10^x),
+   labels = scales::trans_format("log10", scales::math_format(10^.x))) +
+  scale_y_continuous(name = "Number of Crashes", labels = scales::comma) +
+  theme(plot.title = element_text(size=15)) +
+  geom_vline(xintercept = median(base_data$police_notified_time)) + 
+  annotate("text", 
+           x=median(base_data$police_notified_time), 
+           y=0, 
+           label=paste0(median(base_data$police_notified_time), " Minutes."), 
+           angle=0)
+```
+
+\raggedright
+
+Regarding the research question concerning damage size, our analysis revealed that 62% of the damages exceed $\$1,500$, falling into the "Major" category, while 38% of the damages are less than $\$1,500$, falling into the "Minor" category.
+
+##### Fig 2: Distribution of Damage Type (Categorical Outcome)
+
+\center
+
+```{r,fig.width = 4, fig.height = 2.5}
+base_data %>% 
+  group_by(damage_class) %>% 
+  summarise(Count = n()) %>% 
+  ungroup() %>%
+  mutate(`Percent` = round(Count/sum(Count), 2),
+         labels = scales::percent(Percent)) %>% 
+  rename(`Damage Class` = damage_class) %>% 
+  ggplot(aes(x = "", y = Percent, fill = `Damage Class`)) +
+  geom_col() +
+  geom_text(aes(label = labels),
+            position = position_stack(vjust = 0.5)) +
+  coord_polar(theta = "y") + 
+  ggtitle("Distribution of Damage Type") +
+  theme_void() +
+  geom_text(aes(x=0, y = 0, label=paste0("Total: ", sum(Count))))
+```
+
+\raggedright
+
+In examining the average time required to notify the police following a crash, which stands at 25 minutes, a detailed analysis reveals variations across different segments such as days of the week and weather conditions.
+
+When scrutinizing the distribution of notification times throughout the day, we find that the median notification time peaks between 12 PM and 4 PM and reaches its lowest point between 12 AM and 4 AM.
+
+##### Fig 3: Distribution of Time Taken to Notify Across Different Times of the Day
+
+\centering
+
+```{r,fig.width = 6, fig.height = 2.5}
+base_data %>% 
+  mutate(hr_of_day = case_when(hr_of_day < 4 ~ "12 AM - 4 AM",
+                                hr_of_day < 8 ~ "4 AM - 8 AM",
+                                hr_of_day < 12 ~ "8 AM - 12 PM",
+                                hr_of_day < 16 ~ "12 PM - 4 PM",
+                                hr_of_day < 20 ~ "4 PM - 8 PM",
+                                hr_of_day < 24 ~ "8 PM - 12 AM"),
+         hr_of_day = factor(hr_of_day, ordered=T, 
+                             levels = c("12 AM - 4 AM",
+                                        "4 AM - 8 AM",
+                                        "8 AM - 12 PM",
+                                        "12 PM - 4 PM",
+                                        "4 PM - 8 PM",
+                                        "8 PM - 12 AM"))) %>% 
+  ggplot(., aes(x = hr_of_day,  y = police_notified_time))+ 
+  geom_boxplot(outlier.shape=NA)+
+  # geom_jitter(aes(color = hr_of_day)) +
+  ylim(0, 300) +
+  theme_bw() + 
+  xlab("Time of the day") + 
+  ylab("Time taken to Notify (Minutes)")
+```
+
+\raggedright
+
+## Linear Regression Model
+
+```{r}
+
+lm_1 <- lm(`Police Notified Time` ~
+           hr_of_day +
+           trafficway_type +
+           dist_to_dt +
+           temp +
+           precipitation * month_of_year +
+           snow +
+           snowdepth +
+           visibility,
+         data = base_data_filtered)
+```
+
+In developing the Linear Regression model, we hypothesized that the day of week, the hour of day and month of year, would indirectly indicate how much population of Chicago would be outdoors, and thus contain some information that would help predict how long it would take for police to be notified if an accident happened. However, we found no specific relationship between the day of week and police notification time. We did however, find slight variation in the police notification time basis the time of day.
+
+```{r}
+# 
+# base_data_filtered %>% 
+#   ggplot(., aes(x = day_of_week,  y = `Police Notified Time`))+ 
+#   geom_boxplot(outlier.shape=NA)+
+#   geom_jitter(aes(color = crash_hour)) +
+#   # ylim(0, 300) +
+#   theme_bw() + 
+#   xlab("Day of Week") + 
+#   ylab("Time taken to notify police upon accident (Minutes)")
+```
+
+We then looked at the traffic way type, hypothesizing that certain traffic ways such as four-way intersections would have more influx of traffic, thus making accidents more likely to be reported quicker. We did find variations in the distributions of police notification time and traffic-way type.
+
+##### Fig 4: Variance of Police notification time by Traffic way type
+
+\center
+
+```{r}
+base_data_filtered %>% 
+  ggplot(., aes(x = trafficway_type,  y = `Police Notified Time`))+ 
+  geom_boxplot(outlier.shape=NA)+
+  # geom_jitter(aes(color = crash_hour)) +
+  # ylim(0, 300) +
+  theme_bw() + 
+  xlab("Traffic Way Type") + 
+  ylab("Police notification\n time (minutes)") +
+  ggtitle("Variance of Police notification time by Traffic way type") +
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))
+```
+
+\raggedright
+
+```{r}
+
+# base_data_filtered %>% 
+#   mutate(crash_hour = case_when(hr_of_day < 4 ~ "12 AM - 4 AM",
+#                                 hr_of_day < 8 ~ "4 AM - 8 AM",
+#                                 hr_of_day < 12 ~ "8 AM - 12 PM",
+#                                 hr_of_day < 16 ~ "12 PM - 4 PM",
+#                                 hr_of_day < 20 ~ "4 PM - 8 PM",
+#                                 hr_of_day < 24 ~ "8 PM - 12 AM"),
+#          crash_hour = factor(crash_hour, ordered=T, 
+#                              levels = c("12 AM - 4 AM",
+#                                         "4 AM - 8 AM",
+#                                         "8 AM - 12 PM",
+#                                         "12 PM - 4 PM",
+#                                         "4 PM - 8 PM",
+#                                         "8 PM - 12 AM"))) %>% 
+#   ggplot(., aes(x = crash_hour,  y = `Police Notified Time`))+ 
+#   geom_boxplot(outlier.shape=NA)+
+#   # geom_jitter(aes(color = crash_hour)) +
+#   # ylim(0, 300) +
+#   theme_bw() + 
+#   xlab("Time of the day") + 
+#   ylab("Time taken to notify police upon accident (Minutes)")
+```
+
+Finally, since we were unable to find strong indicator variables for our target variable, we sought out additional data. More specifically, we sourced date-level weather data, hypothesizing that lower temperatures, or lower visibility would generally increase the time taken to report accidents. We also added distance from downtown Chicago as a variable and interaction between precipitation and month of year. Despite adding these additional variables, we only observed a slight increase in model performance. Our final model achieved an Adjusted R2 score of 4.5%. This indicated either that the variables needed to predict the outcome are simply not captured in the data, or that we would need a non-linear model to more strongly predict the outcome. The model summary can be viewed in the appendix section of this document.
+
+In model assessment, we looked at the residual plots and found a pattern that indicated possible non-linearity. We then dove deeper into each of the predictors in the model and plotted scatter-plots for numeric variables, and box-plots for categorical variables, with the target variable on the y-axis. Indeed, we found that most of the variables had a mostly non-linear relationship with the target variable. As an alternative, we tried to model the log of the target variable, and still didn't see significant improvements. Upon examining the Q-Q Plot, we saw significant tail-behavior on both ends, which suggests that a linear model may not be the best choice for this problem.
+
+```{r}
+
+# base_data_filtered %>% 
+#   ggplot(., aes(x = month_of_year,  y = `Police Notified Time`))+ 
+#   geom_boxplot(outlier.shape=NA)+
+#   # geom_jitter(aes(color = crash_hour)) +
+#   # ylim(0, 300) +
+#   theme_bw() + 
+#   xlab("Month of year") + 
+#   ylab("Time taken to notify police upon accident (Minutes)")
+```
+
+## Logistic Regression Model
+
+```{r}
+model_3 <- glm(`Damage Class` ~ 
+                 # day_of_week + 
+                 hr_of_day + 
+                 speed_limit + 
+                 dist_to_dt + 
+                 visibility  +
+                 roadway_surface_cond +
+                 trafficway_type +
+                 temp +
+                 snow, 
+               data = base_data_filtered_glm, family = "binomial")
+```
+
+In developing the Logistic Regression model for predicting car accident damage costs, we integrated key factors, notably the roadway surface condition, and visibility, considering the winter conditions of Chicago. The model showed a balanced approach to predicting damages, an important indicator of its unbiased nature, though this did not directly correlate with prediction accuracy.
+
+```{r,include=FALSE}
+library(car)
+vif(model_3)
+```
+
+##### Fig 5: Predicted Prob. of Higher Damage Class by Weather Condition
+
+\center
+
+```{r}
+# Logistic regression for a categorical predictor (weather_condition)
+df = base_data_filtered_glm %>% 
+  rename(damage_class = `Damage Class`)
+model_cat <- glm(damage_class ~ weather_condition, data = df, family = "binomial")
+df_weather <- unique(df[, c("weather_condition", "damage_class")])
+df_weather$prob <- predict(model_cat, newdata = df_weather, type = "response")
+# Create a bar plot
+ggplot(df_weather, aes(x = weather_condition, y = prob, fill = weather_condition)) +
+  geom_bar(stat = "identity") +
+  scale_fill_brewer(palette = "Set3") +
+  ggtitle("Predicted Prob. of Higher Damage by Weather Condition") +
+  xlab("Weather Condition") +
+  ylab("Predicted Probability") +
+  theme(
+    axis.text.x = element_text(angle = 65, hjust = 1,),
+    legend.position = "center"
+  ) 
+```
+
+\raggedright
+
+Our analysis for outliers using Cook's Distance revealed three notable cases, yet their presence did not significantly alter the model's performance. In assessing multicollinearity through the Variance Inflation Factor (VIF), as all variables has VIF score around 1, indicating that multicollinearity was not violated.
+
+##### Fig 6: Confusion Matrix
+
+\center
+
+```{r}
+conf_mat_raw <- confusionMatrix(factor(ifelse(fitted(model_3) > 0.331, "Major", "Minor")), factor(base_data_filtered_glm$`Damage Class`), positive="Major", mode="everything")
+
+conf_mat <- as_tibble(conf_mat_raw$table)
+
+
+plot_confusion_matrix(conf_mat, 
+                      prediction_col = 'Prediction',
+                      target_col = 'Reference', 
+                      counts_col = 'n', 
+                      add_normalized = F, add_col_percentages = F, add_row_percentages = F)
+```
+
+\raggedright
+
+By examining the The Receiver Operating Characteristic (ROC) curve of the model we identified the threshold value at 0.331. However, the confusion matrix was not indicative of strong performance, and overall accuracy stood at 40%. The model's negative Kappa value of -0.063 was particularly concerning, and indicated that the model was unable to uncover meaningful relationships in the data.
+
+In essence, Logistic Regression's strength lies in its capacity to identify severe accidents, a crucial aspect of our study. Yet, the need for refinement is clear, especially in gathering stronger variables to model the outcome, or to use a more powerful class of models.
+
+# Conclusion
+
+The validity of any analysis relies on the accuracy of the assumptions made and the representativeness of the dataset. The strength of this analysis lied in its incorporation of numerous variables, including weather, road conditions, and distance to downtown, all of which were logically relevant to the assessment of damage size and the time it takes for a crash to be reported. However, modeling our outcome variables proved to be very challenging.
+
+For the linear regression model, we found evidence of statistical significance in the traffic way type variable, and also in the interaction between the month of year and precipitation. However, with the Adjusted R2 score of 4.5% we conclude that our model is not sufficiently strong to be used for prediction purposes at this point.
+
+For the logistic regression model, with an F1 score of 40%, it is equally evident that the models is unable to capture patterns in the data to confidently predict the damage class. Although the model has Precision of 62.5%, it struggles with a low recall of 28.5%. Most concerning is the Kappa value of -0.063, which is indicative of the model picking up on mostly noise in the data, rather than meaningful relationships.
+
+Primarily, the presence of unknown values in a majority of the categorical variables made observing meaningful relationships difficult. Additionally, numerous unreasonable values (such as negative time taken for police to be notified) had to be removed from the original dataset since no explanation was found at the source. Furthermore, any relationships found in the dataset were largely counter-intuitive or non-linear.
+
+Enhancements in the model's performance could be achieved with a more comprehensive dataset that accurately captures the nuances of crashes. We would also have to explore a more powerful class of models to capture the non-linearity in the dataset. A dataset of greater scope and accuracy would likely result in improvements, effectively addressing the limitations inherent in the current analysis.
+
+\pagebreak
+
+# Appendix
+
+### Results for Linear Regression Model
+
+#### Model Summary
+
+The model achieved a 4.5% R2 score on the dataset. Below is the technical summary of the model.
+
+```{r}
+suppressWarnings(sjPlot::tab_model(lm_1, 
+                                   show.r2 = F,
+                                   show.obs = F, 
+                                   show.se = T,
+                                   title = "Linear Model Summary for Police Notified Time",
+                                   pred.labels = c("intercept","hr of day","center","divided","barrier","driveway","five point","four way","L-intersect","not divided","not reported","one way","other","parking lot","ramp","roundabout","T-intersect","traffic route","unknown way","unknown intersect","Y-intersect","dist to dt","temp","precipitation","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec","snow","snow depth","visibility","FebXPrecipitation","MarXPrecipitation","AprXPrecipitation","MayXPrecipitation","JunXPrecipitation","JulXPrecipitation","AugXPrecipitation","SepXPrecipitation","OctXPrecipitation","NovXPrecipitation","DecXPrecipitation")))
+
+```
+
+#### Q-Q Plot
+
+The Q-Q plot shows strong tail-behavior.
+
+```{r, fig.height=3}
+plot(lm_1, which=2)
+```
+
+### Results of Logistic Regression Model
+
+#### Model Summary
+
+Below is the technical summary of the Logistic Regression Model.
+
+```{r}
+suppressWarnings(sjPlot::tab_model(model_3,
+                                   show.r2 = F,
+                                   show.obs = F,
+                                   show.se = T,
+                                   string.se = "Std. Error",
+                                   title = "Logistic Regression Summary for Damage Class",
+                                   pred.labels = c("intercept","hr of day","speed limit","dist to dt","visibility","ice road","other road","sand road","snow road","unknown road","wet road","center","divided","barrier","driveway","five point","four way","L-intersect","not divided","not reported","one way","other","parking lot","ramp","roundabout","T-intersect","traffic route","unknown way","unknown intersect","Y-intersect","temp","snow")))
+```
+
+#### AUC-ROC
+
+The plot below shows the ROC of the model, along with the threshold value. The AUC is 0.580, which is only slightly better than chance.
+
+```{r, fig.height=3}
+roc_obj <- roc(base_data_filtered_glm$`Damage Class`,
+               fitted(model_3), print.thres="best", print.auc=T,plot=F, legacy.axes=T)
+plot(roc_obj, print.thres="best", print.auc=TRUE, legacy.axes=T)
+```
